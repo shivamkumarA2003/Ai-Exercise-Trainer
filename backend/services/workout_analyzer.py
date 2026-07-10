@@ -3,8 +3,8 @@ from __future__ import annotations
 from time import perf_counter
 
 from backend.counter.rep_counter import RepCounterRegistry
-from backend.exercise.recognizer import ExerciseRecognizer
-from backend.models.schemas import PoseAnalysisRequest, PoseAnalysisResponse
+from backend.exercise.recognizer import ExercisePrediction, ExerciseRecognizer
+from backend.models.schemas import ExerciseType, PoseAnalysisRequest, PoseAnalysisResponse
 from backend.pose.mediapipe_pose import detect_landmarks
 from backend.posture.rules import PostureEvaluator
 from backend.voice.feedback import FeedbackCooldown
@@ -20,7 +20,7 @@ class WorkoutAnalyzer:
     def analyze(self, payload: PoseAnalysisRequest) -> PoseAnalysisResponse:
         start = perf_counter()
         landmarks = payload.landmarks or detect_landmarks(payload.frame_base64)
-        prediction = self.recognizer.predict(landmarks)
+        prediction = self._predict_exercise(payload, landmarks)
         posture_ok, raw_feedback = self.posture.evaluate(prediction.exercise, landmarks)
         state = self.counters.update(payload.session_id, prediction.exercise, landmarks, payload.timestamp, posture_ok)
         duration = int(max(0, payload.timestamp - (state.started_at or payload.timestamp)))
@@ -41,6 +41,12 @@ class WorkoutAnalyzer:
             feedback=self.feedback.filter(payload.session_id, raw_feedback, payload.timestamp),
             landmarks=landmarks,
         )
+
+    def _predict_exercise(self, payload: PoseAnalysisRequest, landmarks) -> ExercisePrediction:
+        if payload.selected_exercise and payload.selected_exercise != ExerciseType.unknown:
+            confidence = 0.95 if landmarks else 0.4
+            return ExercisePrediction(payload.selected_exercise, confidence)
+        return self.recognizer.predict(landmarks)
 
 
 def _calories_per_rep(exercise) -> float:

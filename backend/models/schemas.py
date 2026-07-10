@@ -36,6 +36,7 @@ class PoseAnalysisRequest(BaseModel):
     session_id: str = Field(alias="sessionId")
     frame_base64: str | None = Field(default=None, alias="frameBase64")
     landmarks: list[Landmark] | None = None
+    selected_exercise: ExerciseType | None = Field(default=None, alias="selectedExercise")
     timestamp: float
 
     model_config = {"populate_by_name": True}

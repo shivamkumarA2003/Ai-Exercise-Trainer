@@ -7,24 +7,42 @@ import { analyzePose, saveWorkout } from "@/services/api";
 import { useSpeechCoach } from "@/hooks/useSpeechCoach";
 import { useTrainerStore } from "@/store/trainer-store";
 import { SkeletonOverlay } from "@/components/SkeletonOverlay";
+import type { ExerciseType } from "@/types/workout";
+
+const exerciseOptions: Array<{ label: string; value: ExerciseType | "auto" }> = [
+  { label: "Auto detect", value: "auto" },
+  { label: "Squat", value: "squat" },
+  { label: "Push-up", value: "push_up" },
+  { label: "Bicep curl", value: "bicep_curl" },
+  { label: "Shoulder press", value: "shoulder_press" },
+  { label: "Lunge", value: "lunge" },
+  { label: "Jumping jack", value: "jumping_jack" },
+  { label: "Plank", value: "plank" },
+];
 
 export function CameraTrainer() {
   const webcamRef = useRef<Webcam>(null);
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const [error, setError] = useState<string>("");
+  const [selectedExercise, setSelectedExercise] = useState<ExerciseType | "auto">("squat");
   const { sessionId, status, setStatus, latest, setLatest, settings, resetSession } = useTrainerStore();
   useSpeechCoach(latest?.feedback, settings.voiceEnabled, settings.speechRate);
 
   const capture = useCallback(async () => {
     const frameBase64 = webcamRef.current?.getScreenshot();
     try {
-      const result = await analyzePose({ sessionId, frameBase64: frameBase64 ?? undefined, timestamp: Date.now() / 1000 });
+      const result = await analyzePose({
+        sessionId,
+        frameBase64: frameBase64 ?? undefined,
+        selectedExercise: selectedExercise === "auto" ? undefined : selectedExercise,
+        timestamp: Date.now() / 1000,
+      });
       setLatest(result);
       setError("");
     } catch {
       setError("Pose service is unavailable. Start the FastAPI server and try again.");
     }
-  }, [sessionId, setLatest]);
+  }, [selectedExercise, sessionId, setLatest]);
 
   useEffect(() => {
     if (status === "running") intervalRef.current = setInterval(capture, 700);
@@ -59,8 +77,23 @@ export function CameraTrainer() {
         <div className="absolute left-4 top-4 rounded-md bg-black/60 px-3 py-2 text-sm text-white">FPS {latest?.fps ?? "--"}</div>
       </section>
       <aside className="rounded-lg border border-slate-200 bg-white p-5 shadow-sm">
-        <p className="text-sm uppercase tracking-wide text-slate-500">Detected exercise</p>
+        <label className="block">
+          <span className="text-sm uppercase tracking-wide text-slate-500">Exercise you are doing</span>
+          <select
+            value={selectedExercise}
+            onChange={(event) => setSelectedExercise(event.target.value as ExerciseType | "auto")}
+            className="mt-2 w-full rounded-md border border-slate-300 bg-white px-3 py-2 text-ink"
+          >
+            {exerciseOptions.map((item) => (
+              <option key={item.value} value={item.value}>{item.label}</option>
+            ))}
+          </select>
+        </label>
+        <p className="mt-5 text-sm uppercase tracking-wide text-slate-500">Computer vision result</p>
         <h1 className="mt-1 text-3xl font-semibold capitalize text-ink">{latest?.exercise?.replace("_", " ") ?? "Waiting"}</h1>
+        <p className="mt-2 text-sm text-slate-500">
+          {latest?.landmarks?.length ? `Tracking ${latest.landmarks.length} body landmarks` : "Searching for body landmarks"}
+        </p>
         <div className="mt-6 grid grid-cols-2 gap-3">
           <Stat label="Reps" value={latest?.repetitions ?? 0} />
           <Stat label="Accuracy" value={`${latest?.accuracy ?? 100}%`} />

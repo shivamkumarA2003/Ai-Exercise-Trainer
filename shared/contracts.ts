@@ -28,6 +28,7 @@ export interface PoseAnalysisRequest {
   sessionId: string;
   frameBase64?: string;
   landmarks?: Landmark[];
+  selectedExercise?: ExerciseType;
   timestamp: number;
 }
 
