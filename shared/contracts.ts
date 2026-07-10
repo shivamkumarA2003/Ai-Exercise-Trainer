@@ -29,6 +29,8 @@ export interface PoseAnalysisRequest {
   frameBase64?: string;
   landmarks?: Landmark[];
   selectedExercise?: ExerciseType;
+  motionSignal?: "up" | "down" | "mid";
+  motionConfidence?: number;
   timestamp: number;
 }
 

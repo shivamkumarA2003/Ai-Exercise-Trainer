@@ -13,6 +13,7 @@ class CounterState:
     phase: str = "up"
     started_at: float | None = None
     last_timestamp: float = 0
+    last_rep_timestamp: float = 0
     exercise: ExerciseType = ExerciseType.unknown
 
 
@@ -20,18 +21,28 @@ class CounterState:
 class RepCounterRegistry:
     sessions: dict[str, CounterState] = field(default_factory=dict)
 
-    def update(self, session_id: str, exercise: ExerciseType, landmarks: list[Landmark], timestamp: float, posture_ok: bool) -> CounterState:
+    def update(
+        self,
+        session_id: str,
+        exercise: ExerciseType,
+        landmarks: list[Landmark],
+        timestamp: float,
+        posture_ok: bool,
+        motion_signal: str | None = None,
+        motion_confidence: float = 0,
+    ) -> CounterState:
         state = self.sessions.setdefault(session_id, CounterState(started_at=timestamp, exercise=exercise))
         if state.exercise != exercise and exercise != ExerciseType.unknown:
             state.exercise = exercise
             state.phase = "up"
         state.last_timestamp = timestamp
-        signal = _movement_signal(exercise, landmarks)
+        signal = motion_signal if motion_signal and motion_confidence >= 0.45 else _movement_signal(exercise, landmarks)
         if signal == "down" and state.phase == "up":
             state.phase = "down"
-        elif signal == "up" and state.phase == "down":
+        elif signal == "up" and state.phase == "down" and timestamp - state.last_rep_timestamp >= 0.65:
             state.phase = "up"
             state.repetitions += 1
+            state.last_rep_timestamp = timestamp
             if not posture_ok:
                 state.incorrect_repetitions += 1
         return state

@@ -22,7 +22,15 @@ class WorkoutAnalyzer:
         landmarks = payload.landmarks or detect_landmarks(payload.frame_base64)
         prediction = self._predict_exercise(payload, landmarks)
         posture_ok, raw_feedback = self.posture.evaluate(prediction.exercise, landmarks)
-        state = self.counters.update(payload.session_id, prediction.exercise, landmarks, payload.timestamp, posture_ok)
+        state = self.counters.update(
+            payload.session_id,
+            prediction.exercise,
+            landmarks,
+            payload.timestamp,
+            posture_ok,
+            payload.motion_signal,
+            payload.motion_confidence,
+        )
         duration = int(max(0, payload.timestamp - (state.started_at or payload.timestamp)))
         incorrect = state.incorrect_repetitions
         reps = state.repetitions

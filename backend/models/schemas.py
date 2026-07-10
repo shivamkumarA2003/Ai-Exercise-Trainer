@@ -37,6 +37,8 @@ class PoseAnalysisRequest(BaseModel):
     frame_base64: str | None = Field(default=None, alias="frameBase64")
     landmarks: list[Landmark] | None = None
     selected_exercise: ExerciseType | None = Field(default=None, alias="selectedExercise")
+    motion_signal: Literal["up", "down", "mid"] | None = Field(default=None, alias="motionSignal")
+    motion_confidence: float = Field(default=0, alias="motionConfidence")
     timestamp: float
 
     model_config = {"populate_by_name": True}
